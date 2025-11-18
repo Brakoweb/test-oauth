@@ -34,4 +34,34 @@ export class GoHighLevelOAuthService {
            console.log(`--GHL OAuth redirect failed, reason: ${error?.message}`); 
         }
     }
+
+    static async getContacts({ accessToken, locationId }) {
+        try {
+            console.log('--GHL fetching contacts for locationId:', locationId);
+            
+            const { data } = await axios.post(
+                `${GHL_BASE.BASE}/contacts/search`,
+                {
+                    locationId: locationId,
+                    pageLimit: 100
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Version': GHL_BASE.VERSION,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+            console.log('--GHL get contacts success, count:', data.contacts?.length || 0);
+            return data.contacts || [];
+        } catch (error) {
+            console.log(`--GHL get contacts failed, reason: ${error?.message}`);
+            if (error.response) {
+                console.log('Response status:', error.response.status);
+                console.log('Response data:', JSON.stringify(error.response.data));
+            }
+            return [];
+        }
+    }
 }

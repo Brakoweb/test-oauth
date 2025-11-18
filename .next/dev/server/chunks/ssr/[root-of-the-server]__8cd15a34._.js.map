@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 10, "column": 0}, "map": {"version":3,"sources":["file:///Users/brako/Documents/proyectos/test/test%20oauth/src/app/success/page.js"],"sourcesContent":["export default function SuccessPage() {\n  return (\n    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>\n      <h1 style={{ color: 'green' }}>¡Autenticación Exitosa!</h1>\n      <p>Has iniciado sesión correctamente.</p>\n    </div>\n  );\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBACE,8OAAC;QAAI,OAAO;YAAE,SAAS;YAAQ,gBAAgB;YAAU,YAAY;YAAU,QAAQ;YAAS,eAAe;QAAS;;0BACtH,8OAAC;gBAAG,OAAO;oBAAE,OAAO;gBAAQ;0BAAG;;;;;;0BAC/B,8OAAC;0BAAE;;;;;;;;;;;;AAGT"}}]
-}
