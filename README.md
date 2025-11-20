@@ -5,7 +5,7 @@ Aplicación Next.js que implementa OAuth 2.0 de GoHighLevel con flujo SSO (Singl
 ## 🎯 Características
 
 - **OAuth 2.0 para Admins**: Autorización una sola vez por location
-- **SSO para Usuarios**: Acceso automático sin pantalla de consentimiento
+- **SSO para Usuarios**: Acceso automático para usuarios de agencia permitidos, sin pantalla de consentimiento.
 - **Persistencia de Tokens**: Base de datos JSON para guardar tokens por location
 - **Dashboard de Contactos**: Visualización de contactos de GoHighLevel
 - **Gestión de Sesiones**: JWT con cookies seguras
@@ -21,26 +21,27 @@ npm install
 
 ### 2. Configuración
 
-Crea un archivo `.env.local`:
+Crea un archivo `.env.local` con la siguiente estructura:
 
 ```env
-# GoHighLevel OAuth
-GHL_CLIENT_ID=tu_client_id
-GHL_CLIENT_SECRET=tu_client_secret
-GHL_OAUTH_SCOPES=contacts.readonly users.readonly locations.readonly
-GHL_OAUTH_SUCCESS=http://localhost:3000/dashboard
-GHL_OAUTH_FAIL=http://localhost:3000/error
+# Host de la aplicación (usar ngrok para desarrollo)
+HOST="https://uncancerous-vernal-mattie.ngrok-free.dev"
 
-# Session
-SESSION_SECRET=tu_secret_muy_seguro_aqui
+# Credenciales de la App OAuth de GoHighLevel
+GHL_OAUTH_REDIRECT_URI="api/v2/redirect"
+GHL_CLIENT_ID="tu_client_id"
+GHL_CLIENT_SECRET="tu_client_secret"
 
-# Host (para desarrollo con ngrok)
-HOST=http://localhost:3000
-```
+# Scopes y redirecciones
+GHL_OAUTH_SCOPES="contacts.readonly users.readonly"
+GHL_OAUTH_SUCCESS="http://localhost:3000/dashboard"
+GHL_OAUTH_FAIL="http://localhost:3000/fail"
 
-**Importante:** Para desarrollo con ngrok, cambia `HOST` a tu URL de ngrok:
-```env
-HOST=https://tu-url.ngrok-free.dev
+# Clave secreta para sesiones
+SESSION_SECRET="una_clave_muy_segura_y_larga"
+
+# IDs de usuarios de agencia permitidos (separados por coma)
+GHL_AGENCY_USER_IDS=id_usuario1,id_usuario2
 ```
 
 ### 3. Ejecutar
@@ -64,10 +65,11 @@ npm run dev
 1. Usuario hace clic en Custom Menu Link en GoHighLevel
 2. GHL redirige a: `/api/sso?locationId=XXX&userId=YYY`
 3. Aplicación:
-   - Busca tokens guardados para ese `locationId`
-   - Obtiene información del usuario desde GHL API
-   - Crea sesión para el usuario
-   - Muestra dashboard personalizado
+   - Verifica si el `userId` pertenece a la lista de `GHL_AGENCY_USER_IDS`.
+   - Busca tokens guardados para ese `locationId`.
+   - Obtiene información del usuario desde la API de GHL.
+   - Crea una sesión para el usuario.
+   - Muestra un dashboard personalizado.
 4. Usuario ve su información y contactos
 
 ## 🔧 Configuración en GoHighLevel
@@ -97,7 +99,7 @@ GoHighLevel reemplazará automáticamente:
 │   └── page.js                      # Página de inicio
 ├── lib/
 │   ├── session.js                   # Gestión de sesiones JWT
-│   └── database.js                  # Persistencia de tokens
+│   └── tokenManager.js              # Persistencia y gestión de tokens
 ├── services/
 │   └── GHL/OAuth/index.js           # Cliente API de GoHighLevel
 └── constants/
@@ -152,7 +154,7 @@ Solo es necesario re-autorizar como admin si:
 
 Mínimos para SSO:
 ```
-contacts.readonly users.readonly locations.readonly
+contacts.readonly users.readonly
 ```
 
 ## 🐛 Troubleshooting
