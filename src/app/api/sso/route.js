@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTokens } from '../../../../lib/database.js';
+import { getValidTokens } from '../../../../lib/tokenManager.js';
 import { GoHighLevelOAuthService } from '../../../../services/GHL/OAuth/index.js';
 
 export async function GET(request) {
@@ -17,8 +17,8 @@ export async function GET(request) {
             );
         }
 
-        // Get stored tokens for this location
-        const tokens = getTokens(locationId);
+        // Get stored tokens for this location (auto-refreshes if expired)
+        const tokens = await getValidTokens(locationId);
         
         if (!tokens) {
             return NextResponse.redirect(
@@ -32,14 +32,38 @@ export async function GET(request) {
             userId: userId
         });
 
-        // If userInfo fetch fails, user might be from agency level
-        // Agency users have access to all locations but their userId is not location-specific
         let isAgencyUser = false;
         let isAdmin = false;
 
+        // 🔒 SECURITY: If user not found, verify it's a whitelisted agency user
         if (!userInfo) {
-            console.log('[SSO] User not found in location, assuming agency-level user');
-            // Create minimal user info for agency users
+            console.log('[SSO] ⚠️  User not found in location, checking if whitelisted agency user...');
+            
+            // Get whitelist of allowed agency user IDs
+            const agencyUserIds = process.env.GHL_AGENCY_USER_IDS 
+                ? process.env.GHL_AGENCY_USER_IDS.split(',').map(id => id.trim())
+                : [];
+            
+            console.log('[SSO] 🔍 Checking userId against whitelist:', { userId, whitelistSize: agencyUserIds.length });
+            
+            // Check if userId is in the whitelist
+            if (!agencyUserIds.includes(userId)) {
+                // ❌ userId NOT in whitelist - reject immediately
+                console.error('[SSO] ❌ SECURITY: userId not in agency whitelist');
+                console.error('[SSO] ❌ SECURITY: Rejecting unauthorized access for userId:', userId);
+                return NextResponse.redirect(
+                    `${baseUrl}/dashboard?error=unauthorized_user&userId=${userId}`
+                );
+            }
+            
+            // ✅ userId IS in whitelist + location has valid tokens = Legitimate agency user
+            // The fact that we have tokens stored for this location means:
+            // 1. Admin completed OAuth flow (so location is legitimate)
+            // 2. userId is in whitelist (so user is legitimate agency user)
+            // This is sufficient security for agency users
+            console.log('[SSO] ✅ Whitelisted agency user verified - granting access');
+            console.log('[SSO] 🔐 Security: userId in whitelist + location has OAuth tokens');
+            
             userInfo = {
                 id: userId,
                 name: 'Agency User',
@@ -50,10 +74,11 @@ export async function GET(request) {
                 }
             };
             isAgencyUser = true;
-            isAdmin = true; // Agency users have admin privileges
+            isAdmin = true;
         } else {
-            // Determine if user is admin based on their role in GHL
+            // User found successfully
             isAdmin = userInfo.roles?.role === 'admin';
+            isAgencyUser = userInfo.roles?.type === 'agency';
         }
 
         console.log('[SSO] Creating session for user:', userInfo.email || userInfo.id, 

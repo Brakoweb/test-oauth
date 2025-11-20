@@ -1,7 +1,6 @@
 {
+  "/admin/locations/page": "app/admin/locations/page.js",
   "/api/sso/route": "app/api/sso/route.js",
   "/api/v2/contacts/route": "app/api/v2/contacts/route.js",
-  "/dashboard-client/page": "app/dashboard-client/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/page": "app/page.js"
+  "/dashboard-client/page": "app/dashboard-client/page.js"
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../../lib/session.js';
 import { GoHighLevelOAuthService } from '../../../../../services/GHL/OAuth/index.js';
+import { getValidTokens } from '../../../../../lib/tokenManager.js';
 import { jwtVerify } from 'jose';
 
 export async function GET(request) {
@@ -22,12 +23,19 @@ export async function GET(request) {
       }
     }
     
-    if (!session || !session.accessToken) {
+    if (!session || !session.locationId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get fresh tokens (auto-refreshes if needed)
+    const tokens = await getValidTokens(session.locationId);
+    
+    if (!tokens) {
+      return NextResponse.json({ error: 'No valid tokens available' }, { status: 401 });
+    }
+
     const contacts = await GoHighLevelOAuthService.getContacts({
-      accessToken: session.accessToken,
+      accessToken: tokens.accessToken,
       locationId: session.locationId
     });
 

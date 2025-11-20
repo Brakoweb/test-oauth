@@ -33,6 +33,10 @@ export default async function DashboardPage({ searchParams }) {
         errorTitle = 'Usuario no encontrado';
         errorDescription = `No se pudo obtener la información del usuario con ID: ${params?.userId || 'N/A'}`;
         break;
+      case 'unauthorized_user':
+        errorTitle = '🚫 Acceso No Autorizado';
+        errorDescription = `El usuario con ID "${params?.userId || 'N/A'}" no existe o no tiene acceso a esta location. Este intento de acceso ha sido registrado.`;
+        break;
       case 'server_error':
         errorTitle = 'Error del servidor';
         errorDescription = errorMessage || 'Ocurrió un error inesperado.';

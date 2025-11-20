@@ -35,6 +35,36 @@ export class GoHighLevelOAuthService {
         }
     }
 
+    static async refreshToken({ refreshToken }) {
+        try {
+            console.log('--GHL refreshing access token...');
+            
+            const payload = {
+                client_id: process.env.GHL_CLIENT_ID,
+                client_secret: process.env.GHL_CLIENT_SECRET,
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+                user_type: GHL_BASE.USER_TYPE
+            };
+            
+            const { data } = await axios.post(GHL_API.token, payload, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
+            
+            console.log('--GHL token refresh success');
+            return data;
+        } catch (error) {
+            console.error(`--GHL token refresh failed, reason: ${error?.message}`);
+            if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', JSON.stringify(error.response.data));
+            }
+            return null;
+        }
+    }
+
     static async getContacts({ accessToken, locationId }) {
         try {
             console.log('--GHL fetching contacts for locationId:', locationId);
