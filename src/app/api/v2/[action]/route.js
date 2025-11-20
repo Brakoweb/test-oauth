@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoHighLevelOAuthService } from "../../../../../services/GHL/OAuth/index.js";
 import { setSession } from '../../../../../lib/session.js';
+import { saveTokens } from '../../../../../lib/database.js';
 
 export async function GET(request, context) {
     try{
@@ -15,39 +16,24 @@ export async function GET(request, context) {
                 }
 
                 const tokenData = await GoHighLevelOAuthService.redirect({code});
-                console.log('Token data received:', tokenData);
                 
                 if (!tokenData || !tokenData.access_token) {
-                    console.log('No token data, redirecting to fail');
                     return NextResponse.redirect(process.env.GHL_OAUTH_FAIL);
                 }
 
-                console.log('Saving session with:', {
-                    accessToken: tokenData.access_token ? 'present' : 'missing',
-                    locationId: tokenData.locationId
-                });
+                // Save tokens to database (permanent storage)
+                saveTokens(tokenData.locationId, tokenData);
 
                 const token = await setSession({
                     accessToken: tokenData.access_token,
-                    locationId: tokenData.locationId
+                    locationId: tokenData.locationId,
+                    isAdmin: true
                 });
                 
-                console.log('Session saved, redirecting to auth-success page');
+                // Redirect to intermediate page with token in URL (same as SSO flow)
+                const successUrl = `${process.env.HOST}/auth-success?token=${encodeURIComponent(token)}`;
                 
-                // Redirect to intermediate page that will then redirect to dashboard
-                const successUrl = `${process.env.HOST}/auth-success?redirect=/dashboard`;
-                
-                const response = NextResponse.redirect(successUrl);
-                response.cookies.set('ghl_session', token, {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'lax',
-                    maxAge: 60 * 60 * 24 * 7,
-                    path: '/',
-                });
-                
-                console.log('Cookie set on response, redirecting to:', successUrl);
-                return response;    
+                return NextResponse.redirect(successUrl);    
         }
         return NextResponse.json({message: 'Accion invalida'}, {status: 400})
     }catch(error){

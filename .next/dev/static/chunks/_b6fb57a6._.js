@@ -17,57 +17,77 @@ var _s = __turbopack_context__.k.signature();
 function AuthSuccessPage() {
     _s();
     const searchParams = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useSearchParams"])();
-    const redirect = searchParams.get('redirect') || '/dashboard';
+    const token = searchParams.get('token');
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AuthSuccessPage.useEffect": ()=>{
-            // Redirigir después de un pequeño delay para asegurar que la cookie se estableció
+            if (token) {
+                // Store token in localStorage
+                localStorage.setItem('ghl_session_token', token);
+                console.log('[Auth Success] Token stored in localStorage');
+            }
+            // Redirect to dashboard-client
             const timer = setTimeout({
                 "AuthSuccessPage.useEffect.timer": ()=>{
-                    window.location.href = redirect;
+                    window.location.href = '/dashboard-client';
                 }
-            }["AuthSuccessPage.useEffect.timer"], 100);
+            }["AuthSuccessPage.useEffect.timer"], 500);
             return ({
                 "AuthSuccessPage.useEffect": ()=>clearTimeout(timer)
             })["AuthSuccessPage.useEffect"];
         }
     }["AuthSuccessPage.useEffect"], [
-        redirect
+        token
     ]);
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         style: {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            height: '100vh'
+            height: '100vh',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
         },
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             style: {
                 textAlign: 'center'
             },
             children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    style: {
+                        fontSize: '3rem',
+                        marginBottom: '1rem'
+                    },
+                    children: "✅"
+                }, void 0, false, {
+                    fileName: "[project]/src/app/auth-success/page.js",
+                    lineNumber: 28,
+                    columnNumber: 9
+                }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                     children: "Autenticación exitosa"
                 }, void 0, false, {
                     fileName: "[project]/src/app/auth-success/page.js",
-                    lineNumber: 22,
+                    lineNumber: 29,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                    children: "Redirigiendo..."
+                    style: {
+                        color: '#666'
+                    },
+                    children: "Redirigiendo al dashboard..."
                 }, void 0, false, {
                     fileName: "[project]/src/app/auth-success/page.js",
-                    lineNumber: 23,
+                    lineNumber: 30,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/auth-success/page.js",
-            lineNumber: 21,
+            lineNumber: 27,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/auth-success/page.js",
-        lineNumber: 20,
+        lineNumber: 26,
         columnNumber: 5
     }, this);
 }

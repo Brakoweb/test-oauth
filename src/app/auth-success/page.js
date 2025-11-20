@@ -5,22 +5,29 @@ import { useSearchParams } from 'next/navigation';
 
 export default function AuthSuccessPage() {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/dashboard';
+  const token = searchParams.get('token');
 
   useEffect(() => {
-    // Redirigir después de un pequeño delay para asegurar que la cookie se estableció
+    if (token) {
+      // Store token in localStorage
+      localStorage.setItem('ghl_session_token', token);
+      console.log('[Auth Success] Token stored in localStorage');
+    }
+    
+    // Redirect to dashboard-client
     const timer = setTimeout(() => {
-      window.location.href = redirect;
-    }, 100);
+      window.location.href = '/dashboard-client';
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [redirect]);
+  }, [token]);
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
         <h2>Autenticación exitosa</h2>
-        <p>Redirigiendo...</p>
+        <p style={{ color: '#666' }}>Redirigiendo al dashboard...</p>
       </div>
     </div>
   );

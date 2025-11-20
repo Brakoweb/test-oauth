@@ -64,4 +64,71 @@ export class GoHighLevelOAuthService {
             return [];
         }
     }
+
+    static async getUserByEmail({ accessToken, locationId, email }) {
+        try {
+            console.log('--GHL fetching user by email:', email);
+            
+            // Filter users by email (POST request)
+            const { data } = await axios.post(
+                `${GHL_BASE.BASE}/users/search/filter-by-email`,
+                {
+                    locationId: locationId,
+                    email: email
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Version': GHL_BASE.VERSION,
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
+            console.log('--GHL search user success:', data);
+            
+            // Return first matching user
+            if (data.users && data.users.length > 0) {
+                return data.users[0];
+            }
+            
+            // If no users array, maybe the response is directly the user
+            if (data.id) {
+                return data;
+            }
+            
+            return null;
+        } catch (error) {
+            console.log(`--GHL search user failed, reason: ${error?.message}`);
+            if (error.response) {
+                console.log('Response status:', error.response.status);
+                console.log('Response data:', JSON.stringify(error.response.data));
+            }
+            return null;
+        }
+    }
+
+    static async getUserInfo({ accessToken, userId }) {
+        try {
+            console.log('--GHL fetching user info for userId:', userId);
+            
+            const { data } = await axios.get(
+                `${GHL_BASE.BASE}/users/${userId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Version': GHL_BASE.VERSION,
+                    },
+                }
+            );
+            console.log('--GHL get user info success:', data);
+            return data;
+        } catch (error) {
+            console.log(`--GHL get user info failed, reason: ${error?.message}`);
+            if (error.response) {
+                console.log('Response status:', error.response.status);
+                console.log('Response data:', JSON.stringify(error.response.data));
+            }
+            return null;
+        }
+    }
 }

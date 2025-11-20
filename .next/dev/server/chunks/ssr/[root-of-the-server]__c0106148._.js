@@ -28,33 +28,29 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$head
 const secret = new TextEncoder().encode(process.env.SESSION_SECRET);
 const COOKIE_NAME = 'ghl_session';
 async function setSession(data) {
-    console.log('setSession - Data to save:', data);
     const token = await new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jose$2f$dist$2f$webapi$2f$jwt$2f$sign$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["SignJWT"](data).setProtectedHeader({
         alg: 'HS256'
     }).setExpirationTime('7d').sign(secret);
-    console.log('setSession - Token created:', token ? 'yes' : 'no');
     const cookieStore = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$headers$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["cookies"])();
+    // Use secure: true for ngrok (HTTPS) even in development
+    const isSecure = process.env.HOST?.startsWith('https://') || ("TURBOPACK compile-time value", "development") === 'production';
     cookieStore.set(COOKIE_NAME, token, {
         httpOnly: true,
-        secure: ("TURBOPACK compile-time value", "development") === 'production',
+        secure: isSecure,
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 7,
         path: '/'
     });
-    console.log('setSession - Cookie set with name:', COOKIE_NAME);
     return token;
 }
 async function getSession() {
     const cookieStore = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$headers$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["cookies"])();
     const token = cookieStore.get(COOKIE_NAME)?.value;
-    console.log('getSession - Token from cookie:', token ? 'present' : 'missing');
     if (!token) return null;
     try {
         const { payload } = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jose$2f$dist$2f$webapi$2f$jwt$2f$verify$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jwtVerify"])(token, secret);
-        console.log('getSession - Payload:', payload);
         return payload;
     } catch (error) {
-        console.log('getSession - Error verifying token:', error.message);
         return null;
     }
 }
@@ -215,6 +211,59 @@ class GoHighLevelOAuthService {
             return [];
         }
     }
+    static async getUserByEmail({ accessToken, locationId, email }) {
+        try {
+            console.log('--GHL fetching user by email:', email);
+            // Filter users by email (POST request)
+            const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$axios$2f$lib$2f$axios$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].post(`${__TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$server$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["GHL_BASE"].BASE}/users/search/filter-by-email`, {
+                locationId: locationId,
+                email: email
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Version': __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$server$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["GHL_BASE"].VERSION,
+                    'Content-Type': 'application/json'
+                }
+            });
+            console.log('--GHL search user success:', data);
+            // Return first matching user
+            if (data.users && data.users.length > 0) {
+                return data.users[0];
+            }
+            // If no users array, maybe the response is directly the user
+            if (data.id) {
+                return data;
+            }
+            return null;
+        } catch (error) {
+            console.log(`--GHL search user failed, reason: ${error?.message}`);
+            if (error.response) {
+                console.log('Response status:', error.response.status);
+                console.log('Response data:', JSON.stringify(error.response.data));
+            }
+            return null;
+        }
+    }
+    static async getUserInfo({ accessToken, userId }) {
+        try {
+            console.log('--GHL fetching user info for userId:', userId);
+            const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$axios$2f$lib$2f$axios$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"].get(`${__TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$server$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["GHL_BASE"].BASE}/users/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Version': __TURBOPACK__imported__module__$5b$project$5d2f$constants$2f$server$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["GHL_BASE"].VERSION
+                }
+            });
+            console.log('--GHL get user info success:', data);
+            return data;
+        } catch (error) {
+            console.log(`--GHL get user info failed, reason: ${error?.message}`);
+            if (error.response) {
+                console.log('Response status:', error.response.status);
+                console.log('Response data:', JSON.stringify(error.response.data));
+            }
+            return null;
+        }
+    }
 }
 }),
 "[project]/src/app/dashboard/page.js [app-rsc] (ecmascript)", ((__turbopack_context__) => {
@@ -227,50 +276,361 @@ __turbopack_context__.s([
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/server/route-modules/app-page/vendored/rsc/react-jsx-dev-runtime.js [app-rsc] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$session$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/session.js [app-rsc] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$services$2f$GHL$2f$OAuth$2f$index$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/services/GHL/OAuth/index.js [app-rsc] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$api$2f$navigation$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/node_modules/next/dist/api/navigation.react-server.js [app-rsc] (ecmascript) <locals>");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$components$2f$navigation$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/client/components/navigation.react-server.js [app-rsc] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$headers$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/headers.js [app-rsc] (ecmascript)");
 ;
 ;
 ;
-async function DashboardPage() {
-    const session = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$session$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["getSession"])();
-    console.log('Dashboard - Session retrieved:', session);
-    if (!session || !session.accessToken) {
-        console.log('Dashboard - No session or no access token');
+;
+;
+async function DashboardPage({ searchParams }) {
+    const params = await searchParams;
+    const locationIdFromUrl = params?.locationId;
+    const userIdFromUrl = params?.userId;
+    const errorParam = params?.error;
+    const errorMessage = params?.message;
+    // SSO Flow: Redirect to SSO handler if locationId and userId are present
+    if (locationIdFromUrl && userIdFromUrl) {
+        (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$components$2f$navigation$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["redirect"])(`/api/sso?locationId=${locationIdFromUrl}&userId=${userIdFromUrl}`);
+    }
+    // Handle SSO errors
+    if (errorParam) {
+        let errorTitle = 'Error';
+        let errorDescription = 'Ocurrió un error durante la autenticación.';
+        switch(errorParam){
+            case 'missing_params':
+                errorTitle = 'Parámetros faltantes';
+                errorDescription = 'Se requieren locationId y userId en la URL.';
+                break;
+            case 'no_tokens':
+                errorTitle = '⚠️ Location No Autorizada';
+                errorDescription = `No hay tokens guardados para la location: ${locationIdFromUrl || 'N/A'}`;
+                break;
+            case 'user_not_found':
+                errorTitle = 'Usuario no encontrado';
+                errorDescription = `No se pudo obtener la información del usuario con ID: ${params?.userId || 'N/A'}`;
+                break;
+            case 'server_error':
+                errorTitle = 'Error del servidor';
+                errorDescription = errorMessage || 'Ocurrió un error inesperado.';
+                break;
+        }
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             style: {
                 padding: '2rem',
-                textAlign: 'center'
+                maxWidth: '800px',
+                margin: '0 auto'
             },
-            children: [
-                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                    children: "No autenticado"
-                }, void 0, false, {
-                    fileName: "[project]/src/app/dashboard/page.js",
-                    lineNumber: 12,
-                    columnNumber: 9
-                }, this),
-                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                    children: "Por favor, inicia sesión primero."
-                }, void 0, false, {
-                    fileName: "[project]/src/app/dashboard/page.js",
-                    lineNumber: 13,
-                    columnNumber: 9
-                }, this),
-                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
-                    href: "/api/v2/authorize",
-                    style: {
-                        color: 'blue',
-                        textDecoration: 'underline'
-                    },
-                    children: "Iniciar sesión"
-                }, void 0, false, {
-                    fileName: "[project]/src/app/dashboard/page.js",
-                    lineNumber: 14,
-                    columnNumber: 9
-                }, this)
-            ]
-        }, void 0, true, {
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                style: {
+                    border: '2px solid #ef4444',
+                    borderRadius: '8px',
+                    padding: '2rem',
+                    backgroundColor: '#fef2f2'
+                },
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+                        style: {
+                            color: '#b91c1c',
+                            marginTop: 0
+                        },
+                        children: errorTitle
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 50,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        style: {
+                            marginBottom: '1.5rem'
+                        },
+                        children: errorDescription
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 52,
+                        columnNumber: 11
+                    }, this),
+                    errorParam === 'no_tokens' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            backgroundColor: '#fff7ed',
+                            border: '1px solid #fb923c',
+                            borderRadius: '6px',
+                            padding: '1rem',
+                            marginBottom: '1.5rem'
+                        },
+                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            style: {
+                                margin: 0,
+                                fontSize: '0.95em'
+                            },
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                    children: "💡 Solución:"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/dashboard/page.js",
+                                    lineNumber: 65,
+                                    columnNumber: 17
+                                }, this),
+                                " Un administrador de esta location debe autorizar la aplicación primero. Cada location en GoHighLevel requiere su propia autorización."
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/app/dashboard/page.js",
+                            lineNumber: 64,
+                            columnNumber: 15
+                        }, this)
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 57,
+                        columnNumber: 13
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            display: 'flex',
+                            gap: '1rem',
+                            flexWrap: 'wrap'
+                        },
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                href: "/api/v2/authorize",
+                                style: {
+                                    display: 'inline-block',
+                                    padding: '0.75rem 1.5rem',
+                                    backgroundColor: '#3b82f6',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '6px',
+                                    fontWeight: 'bold'
+                                },
+                                children: "Autorizar como Admin"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 72,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                href: "/admin/locations",
+                                style: {
+                                    display: 'inline-block',
+                                    padding: '0.75rem 1.5rem',
+                                    backgroundColor: '#6b7280',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    borderRadius: '6px',
+                                    fontWeight: 'bold'
+                                },
+                                children: "Ver Locations Autorizadas"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 87,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 71,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/app/dashboard/page.js",
+                lineNumber: 44,
+                columnNumber: 9
+            }, this)
+        }, void 0, false, {
             fileName: "[project]/src/app/dashboard/page.js",
-            lineNumber: 11,
+            lineNumber: 43,
+            columnNumber: 7
+        }, this);
+    }
+    // Check existing session
+    const session = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$session$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["getSession"])();
+    // Debug: Check if cookie exists
+    const cookieStore = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$headers$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["cookies"])();
+    const rawCookie = cookieStore.get('ghl_session');
+    console.log('[Dashboard] Raw cookie present:', !!rawCookie);
+    console.log('[Dashboard] Session loaded:', {
+        isAdmin: session?.isAdmin,
+        userId: session?.userId,
+        email: session?.userInfo?.email,
+        hasAccessToken: !!session?.accessToken
+    });
+    if (!session || !session.accessToken) {
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            style: {
+                padding: '2rem',
+                maxWidth: '600px',
+                margin: '0 auto'
+            },
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                style: {
+                    border: '2px solid #3b82f6',
+                    borderRadius: '8px',
+                    padding: '2rem',
+                    backgroundColor: '#eff6ff',
+                    textAlign: 'center'
+                },
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+                        style: {
+                            color: '#1e40af',
+                            marginTop: 0
+                        },
+                        children: "🔐 Sesión no iniciada"
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 131,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            marginBottom: '2rem',
+                            textAlign: 'left'
+                        },
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                style: {
+                                    marginBottom: '1rem'
+                                },
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                    children: "👤 ¿Eres un usuario normal?"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/dashboard/page.js",
+                                    lineNumber: 135,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 134,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                style: {
+                                    marginBottom: '1rem',
+                                    paddingLeft: '1rem',
+                                    fontSize: '0.95em'
+                                },
+                                children: [
+                                    "Accede a través del ",
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                        children: "Custom Menu Link"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/dashboard/page.js",
+                                        lineNumber: 138,
+                                        columnNumber: 35
+                                    }, this),
+                                    " en GoHighLevel. No necesitas autorizar nada, el acceso es automático."
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 137,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                style: {
+                                    borderTop: '1px solid #bfdbfe',
+                                    marginTop: '1.5rem',
+                                    marginBottom: '1.5rem'
+                                }
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 142,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                style: {
+                                    marginBottom: '1rem'
+                                },
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                    children: "👑 ¿Eres un administrador?"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/dashboard/page.js",
+                                    lineNumber: 149,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 148,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                style: {
+                                    marginBottom: '1rem',
+                                    paddingLeft: '1rem',
+                                    fontSize: '0.95em'
+                                },
+                                children: "Autoriza la aplicación una sola vez por location para que los usuarios puedan acceder."
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 151,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                style: {
+                                    textAlign: 'center',
+                                    marginTop: '1.5rem'
+                                },
+                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                    href: "/api/v2/authorize",
+                                    style: {
+                                        display: 'inline-block',
+                                        padding: '0.75rem 1.5rem',
+                                        backgroundColor: '#3b82f6',
+                                        color: 'white',
+                                        textDecoration: 'none',
+                                        borderRadius: '6px',
+                                        fontWeight: 'bold'
+                                    },
+                                    children: "Autorizar como Admin"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/dashboard/page.js",
+                                    lineNumber: 156,
+                                    columnNumber: 15
+                                }, this)
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 155,
+                                columnNumber: 13
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 133,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            fontSize: '0.85em',
+                            color: '#6b7280',
+                            marginTop: '1.5rem',
+                            paddingTop: '1rem',
+                            borderTop: '1px solid #bfdbfe'
+                        },
+                        children: [
+                            "💡 ",
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                children: "Nota:"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 180,
+                                columnNumber: 16
+                            }, this),
+                            " Cerrar sesión no borra la autorización del admin. Los tokens se mantienen seguros en la base de datos."
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 173,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/app/dashboard/page.js",
+                lineNumber: 124,
+                columnNumber: 9
+            }, this)
+        }, void 0, false, {
+            fileName: "[project]/src/app/dashboard/page.js",
+            lineNumber: 123,
             columnNumber: 7
         }, this);
     }
@@ -291,15 +651,214 @@ async function DashboardPage() {
             margin: '0 auto'
         },
         children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 style: {
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     marginBottom: '2rem'
                 },
-                children: "Dashboard de Contactos"
-            }, void 0, false, {
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
+                        style: {
+                            margin: 0
+                        },
+                        children: "Dashboard de Contactos"
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 203,
+                        columnNumber: 9
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            display: 'flex',
+                            gap: '1rem',
+                            alignItems: 'center'
+                        },
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                style: {
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '4px',
+                                    backgroundColor: session.isAdmin ? '#dbeafe' : '#fef3c7',
+                                    color: session.isAdmin ? '#1e40af' : '#92400e',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.875rem'
+                                },
+                                children: session.isAdmin ? '👑 ADMIN' : '👤 USUARIO'
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 205,
+                                columnNumber: 11
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("a", {
+                                href: "/api/logout",
+                                style: {
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#ef4444',
+                                    color: 'white',
+                                    textDecoration: 'none',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 'bold'
+                                },
+                                children: "🚪 Cerrar Sesión"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 215,
+                                columnNumber: 11
+                            }, this)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 204,
+                        columnNumber: 9
+                    }, this)
+                ]
+            }, void 0, true, {
                 fileName: "[project]/src/app/dashboard/page.js",
-                lineNumber: 35,
+                lineNumber: 202,
                 columnNumber: 7
+            }, this),
+            session.userInfo && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                style: {
+                    backgroundColor: '#f0f9ff',
+                    padding: '1.5rem',
+                    borderRadius: '8px',
+                    marginBottom: '2rem',
+                    border: '1px solid #0ea5e9'
+                },
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                        style: {
+                            marginTop: 0,
+                            marginBottom: '1rem',
+                            color: '#0369a1'
+                        },
+                        children: "Información del Usuario"
+                    }, void 0, false, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 241,
+                        columnNumber: 11
+                    }, this),
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                        style: {
+                            display: 'grid',
+                            gridTemplateColumns: 'auto 1fr',
+                            gap: '0.5rem 1.5rem'
+                        },
+                        children: [
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                children: "Nombre:"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 245,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                children: session.userInfo.name || (session.userInfo.firstName && session.userInfo.lastName ? `${session.userInfo.firstName} ${session.userInfo.lastName}` : 'N/A')
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 246,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                children: "Email:"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 248,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                children: session.userInfo.email || session.userEmail || 'N/A'
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 249,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                children: "User ID:"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 251,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                style: {
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.9em'
+                                },
+                                children: session.userId || session.userInfo.id || 'N/A'
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 252,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                children: "Location ID:"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 254,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                style: {
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.9em'
+                                },
+                                children: session.locationId || 'N/A'
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 255,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                children: "Rol:"
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 257,
+                                columnNumber: 13
+                            }, this),
+                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                children: session.userInfo.role || 'N/A'
+                            }, void 0, false, {
+                                fileName: "[project]/src/app/dashboard/page.js",
+                                lineNumber: 258,
+                                columnNumber: 13
+                            }, this),
+                            session.userInfo.permissions && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["Fragment"], {
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                        children: "Permisos:"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/dashboard/page.js",
+                                        lineNumber: 262,
+                                        columnNumber: 17
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                        style: {
+                                            fontSize: '0.85em',
+                                            wordBreak: 'break-word'
+                                        },
+                                        children: JSON.stringify(session.userInfo.permissions, null, 2)
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/dashboard/page.js",
+                                        lineNumber: 263,
+                                        columnNumber: 17
+                                    }, this)
+                                ]
+                            }, void 0, true)
+                        ]
+                    }, void 0, true, {
+                        fileName: "[project]/src/app/dashboard/page.js",
+                        lineNumber: 244,
+                        columnNumber: 11
+                    }, this)
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/app/dashboard/page.js",
+                lineNumber: 234,
+                columnNumber: 9
             }, this),
             error && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 style: {
@@ -318,19 +877,19 @@ async function DashboardPage() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/dashboard/page.js",
-                    lineNumber: 39,
+                    lineNumber: 274,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/dashboard/page.js",
-                lineNumber: 38,
+                lineNumber: 273,
                 columnNumber: 9
             }, this),
             contacts.length === 0 && !error ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                 children: "No se encontraron contactos."
             }, void 0, false, {
                 fileName: "[project]/src/app/dashboard/page.js",
-                lineNumber: 44,
+                lineNumber: 279,
                 columnNumber: 9
             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 style: {
@@ -359,7 +918,7 @@ async function DashboardPage() {
                                             children: "Nombre"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/dashboard/page.js",
-                                            lineNumber: 50,
+                                            lineNumber: 285,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -371,7 +930,7 @@ async function DashboardPage() {
                                             children: "Email"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/dashboard/page.js",
-                                            lineNumber: 51,
+                                            lineNumber: 286,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -383,18 +942,18 @@ async function DashboardPage() {
                                             children: "Teléfono"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/dashboard/page.js",
-                                            lineNumber: 52,
+                                            lineNumber: 287,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/dashboard/page.js",
-                                    lineNumber: 49,
+                                    lineNumber: 284,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/app/dashboard/page.js",
-                                lineNumber: 48,
+                                lineNumber: 283,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -414,7 +973,7 @@ async function DashboardPage() {
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/dashboard/page.js",
-                                                lineNumber: 58,
+                                                lineNumber: 293,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -424,7 +983,7 @@ async function DashboardPage() {
                                                 children: contact.email || '-'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/dashboard/page.js",
-                                                lineNumber: 61,
+                                                lineNumber: 296,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -434,24 +993,24 @@ async function DashboardPage() {
                                                 children: contact.phone || '-'
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/dashboard/page.js",
-                                                lineNumber: 62,
+                                                lineNumber: 297,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, contact.id || index, true, {
                                         fileName: "[project]/src/app/dashboard/page.js",
-                                        lineNumber: 57,
+                                        lineNumber: 292,
                                         columnNumber: 17
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/src/app/dashboard/page.js",
-                                lineNumber: 55,
+                                lineNumber: 290,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/dashboard/page.js",
-                        lineNumber: 47,
+                        lineNumber: 282,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -465,19 +1024,19 @@ async function DashboardPage() {
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/dashboard/page.js",
-                        lineNumber: 67,
+                        lineNumber: 302,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/dashboard/page.js",
-                lineNumber: 46,
+                lineNumber: 281,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/dashboard/page.js",
-        lineNumber: 34,
+        lineNumber: 201,
         columnNumber: 5
     }, this);
 }
